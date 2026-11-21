@@ -68,7 +68,34 @@ export function startTelegramBot(webBaseUrl: string) {
         const chatId = upd.message?.chat.id;
         if (!text || !chatId) continue;
 
-        const match = text.match(/(?:\/scan\s+)?(?:(base|robinhood|rh|8453|4663)\s+)?(0x[a-fA-F0-9]{40})/i);
+        if (/^\/(start|help)(@\w+)?(\s|$)/i.test(text)) {
+          const welcome = [
+            `*Vigil · On-Chain Contract & Bytecode Scanner*`,
+            `Instant 2-second security audit for *Base Mainnet (8453)* & *Robinhood Chain (4663)*.`,
+            ``,
+            `*Commands:*`,
+            `• \`/scan 0x...\` — Scan on Base Mainnet (default)`,
+            `• \`/scan base 0x...\` — Scan on Base Mainnet`,
+            `• \`/scan robinhood 0x...\` — Scan on Robinhood Chain`,
+            `• Or simply paste any \`0x...\` address!`,
+            ``,
+            `Web & Free API: ${webBaseUrl}`,
+            `Launchpad: https://kradl.xyz`,
+          ].join("\n");
+          await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              chat_id: chatId,
+              text: welcome,
+              parse_mode: "Markdown",
+              disable_web_page_preview: true,
+            }),
+          });
+          continue;
+        }
+
+        const match = text.match(/(?:\/scan(?:@\w+)?\s+)?(?:(base|robinhood|rh|8453|4663)\s+)?(0x[a-fA-F0-9]{40})/i);
         if (!match) continue;
 
         const chainRaw = (match[1] ?? "base").toLowerCase();
