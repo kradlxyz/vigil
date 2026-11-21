@@ -1,0 +1,21 @@
+{
+  "name": "vigil-scanner",
+  "version": "1.0.0",
+  "description": "2-second on-chain smart contract & bytecode safety scanner for Base and Robinhood Chain with REST API & Telegram Bot.",
+  "type": "module",
+  "scripts": {
+    "dev": "tsx watch src/server.ts",
+    "build": "tsc",
+    "start": "node dist/server.js",
+    "test": "tsx --test test/*.test.ts",
+    "typecheck": "tsc --noEmit"
+  },
+  "dependencies": {
+    "viem": "^2.23.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.3"
+  }
+}

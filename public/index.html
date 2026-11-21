@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Vigil · On-Chain Contract & Bytecode Scanner (Base & Robinhood Chain)</title>
+  <meta name="description" content="2-second on-chain smart contract & bytecode safety scanner for Base Mainnet (8453) and Robinhood Chain (4663). Sourcify verification, EIP-1967 proxy check, admin selector scan, and bot-ready REST API." />
+  <style>
+    :root {
+      --bg: #09090b;
+      --surface: #111114;
+      --elevated: #18181b;
+      --border: #27272a;
+      --border-strong: #3f3f46;
+      --text: #fafafa;
+      --muted: #a1a1aa;
+      --dim: #71717a;
+      --pass: #10b981;
+      --warn: #f59e0b;
+      --fail: #f43f5e;
+      color-scheme: dark;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Inter", "Segoe UI", sans-serif;
+      line-height: 1.5;
+      min-height: 100vh;
+    }
+    .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace; }
+    .container { max-width: 880px; margin: 0 auto; padding: 28px 20px 64px; }
+    header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding-bottom: 24px; border-bottom: 1px solid var(--border); margin-bottom: 32px;
+      gap: 12px; flex-wrap: wrap;
+    }
+    .brand { display: flex; align-items: center; gap: 10px; text-decoration: none; color: var(--text); }
+    .brand-mark {
+      width: 28px; height: 28px; border-radius: 6px; border: 1px solid var(--border-strong);
+      display: grid; place-items: center; font-weight: 700; font-size: 13px; background: var(--surface);
+    }
+    .brand-title { font-weight: 700; font-size: 16px; letter-spacing: -0.02em; }
+    .nav-links { display: flex; gap: 16px; font-size: 13px; }
+    .nav-links a { color: var(--muted); text-decoration: none; }
+    .nav-links a:hover { color: var(--text); }
+    h1 { font-size: clamp(26px, 4vw, 36px); font-weight: 700; letter-spacing: -0.03em; margin-bottom: 8px; }
+    .subtitle { color: var(--muted); font-size: 15px; max-width: 640px; margin-bottom: 24px; }
+    .card {
+      background: var(--surface); border: 1px solid var(--border); border-radius: 10px;
+      padding: 20px; margin-bottom: 16px;
+    }
+    .search-row { display: flex; gap: 10px; flex-wrap: wrap; }
+    select, input {
+      background: var(--elevated); color: var(--text); border: 1px solid var(--border);
+      border-radius: 8px; padding: 11px 14px; font-size: 14px; outline: none;
+    }
+    select:focus, input:focus { border-color: var(--border-strong); }
+    select option { background: var(--surface); color: var(--text); }
+    input.addr { flex: 1; min-width: 240px; }
+    button.primary {
+      background: var(--text); color: #09090b; border: none; border-radius: 8px;
+      padding: 11px 20px; font-weight: 600; font-size: 14px; cursor: pointer;
+    }
+    button.primary:hover { opacity: 0.92; }
+    button.primary:disabled { opacity: 0.5; cursor: not-allowed; }
+    .samples { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 12px; align-items: center; font-size: 12px; color: var(--dim); }
+    .sample-btn {
+      background: var(--elevated); border: 1px solid var(--border); color: var(--muted);
+      border-radius: 6px; padding: 4px 10px; font-size: 12px; cursor: pointer;
+    }
+    .sample-btn:hover { color: var(--text); border-color: var(--border-strong); }
+    .hidden { display: none; }
+    .score-header { display: flex; justify-content: space-between; align-items: flex-start; gap: 16px; flex-wrap: wrap; }
+    .badge {
+      display: inline-block; padding: 4px 10px; border-radius: 6px; font-size: 12px; font-weight: 600;
+      border: 1px solid var(--border);
+    }
+    .badge.low { color: var(--pass); border-color: rgba(16,185,129,0.35); background: rgba(16,185,129,0.08); }
+    .badge.med { color: var(--warn); border-color: rgba(245,158,11,0.35); background: rgba(245,158,11,0.08); }
+    .badge.high { color: var(--fail); border-color: rgba(244,63,94,0.35); background: rgba(244,63,94,0.08); }
+    .score-num { font-size: 34px; font-weight: 700; letter-spacing: -0.03em; }
+    .meta-grid {
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+      gap: 12px; margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--border);
+    }
+    .meta-label { font-size: 11px; color: var(--dim); text-transform: uppercase; letter-spacing: 0.05em; }
+    .meta-val { font-size: 13px; color: var(--text); margin-top: 2px; word-break: break-all; }
+    .checks { display: flex; flex-direction: column; gap: 10px; margin-top: 16px; }
+    .check-row {
+      display: flex; align-items: flex-start; gap: 12px; padding: 12px 14px;
+      background: var(--elevated); border: 1px solid var(--border); border-radius: 8px;
+    }
+    .dot { width: 8px; height: 8px; border-radius: 50%; margin-top: 6px; flex-shrink: 0; }
+    .dot.pass { background: var(--pass); }
+    .dot.warn { background: var(--warn); }
+    .dot.fail { background: var(--fail); }
+    .dot.info { background: var(--muted); }
+    .check-title { font-size: 13px; font-weight: 600; }
+    .check-detail { font-size: 12px; color: var(--muted); margin-top: 2px; word-break: break-word; }
+    .api-box {
+      background: var(--elevated); border: 1px solid var(--border); border-radius: 8px;
+      padding: 12px 14px; font-size: 12px; color: var(--muted); overflow-x: auto; margin-top: 10px;
+    }
+    .err {
+      padding: 12px 14px; border-radius: 8px; border: 1px solid rgba(244,63,94,0.35);
+      background: rgba(244,63,94,0.08); color: #fda4af; font-size: 13px; margin-bottom: 16px;
+    }
+    footer {
+      margin-top: 40px; padding-top: 20px; border-top: 1px solid var(--border);
+      display: flex; justify-content: space-between; font-size: 12px; color: var(--dim); flex-wrap: wrap; gap: 8px;
+    }
+    footer a { color: var(--muted); text-decoration: none; }
+    footer a:hover { color: var(--text); }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <a class="brand" href="/">
+        <span class="brand-mark mono">V</span>
+        <span class="brand-title">Vigil</span>
+      </a>
+      <nav class="nav-links mono">
+        <a href="#api">REST API &amp; Bot</a>
+        <a href="https://github.com/kradlxyz/vigil" target="_blank" rel="noreferrer">GitHub</a>
+        <a href="https://kradl.xyz" target="_blank" rel="noreferrer">Kradl</a>
+      </nav>
+    </header>
+
+    <h1>Verify any contract before you sign.</h1>
+    <p class="subtitle">
+      2-second on-chain bytecode, Sourcify verification, EIP-1967 proxy, and admin selector audit for Base Mainnet (8453) and Robinhood Chain (4663).
+    </p>
+
+    <div class="card">
+      <form id="scanForm" class="search-row">
+        <select id="chainSelect" aria-label="Network">
+          <option value="8453">Base Mainnet (8453)</option>
+          <option value="4663">Robinhood Chain (4663)</option>
+        </select>
+        <input id="addrInput" class="addr mono" type="text" placeholder="0x... contract, token, or wallet address" required />
+        <button id="scanBtn" class="primary" type="submit">Scan Now</button>
+      </form>
+      <div class="samples">
+        <span>Try live:</span>
+        <button type="button" class="sample-btn mono" data-chain="8453" data-addr="0x2FEE1b921F68A19bFdA0B587dff8bC245727D518">KradlLaunchpad (Base)</button>
+        <button type="button" class="sample-btn mono" data-chain="4663" data-addr="0x7034da4b5d17225562eaab947d7b0d109ed28a4a">$KRADL (Robinhood)</button>
+        <button type="button" class="sample-btn mono" data-chain="8453" data-addr="0x4200000000000000000000000000000000000006">WETH (Base)</button>
+      </div>
+    </div>
+
+    <div id="errorBox" class="err hidden"></div>
+
+    <section id="resultCard" class="card hidden">
+      <div class="score-header">
+        <div>
+          <div id="resBadge" class="badge low mono">LOW RISK</div>
+          <h2 id="resTitle" style="font-size:20px;margin-top:8px;">Contract</h2>
+          <div id="resAddr" class="mono" style="font-size:12px;color:var(--muted);margin-top:2px;"></div>
+        </div>
+        <div style="text-align:right;">
+          <div class="meta-label mono">Safety Score</div>
+          <div id="resScore" class="score-num mono">100/100</div>
+          <div style="margin-top:6px;display:flex;gap:8px;justify-content:flex-end;">
+            <a id="resExplorer" href="#" target="_blank" rel="noreferrer" class="sample-btn mono" style="text-decoration:none;">Explorer ↗</a>
+            <button id="copyShareBtn" type="button" class="sample-btn mono">Copy Share Link</button>
+          </div>
+        </div>
+      </div>
+
+      <div id="metaGrid" class="meta-grid"></div>
+      <div id="checksList" class="checks"></div>
+    </section>
+
+    <section id="api" class="card">
+      <div style="font-weight:600;font-size:15px;">Bot &amp; AI Agent REST API (Free, No Key Required)</div>
+      <p style="font-size:13px;color:var(--muted);margin-top:4px;">
+        Query live JSON safety reports from any Telegram bot, X bot, or AI trading agent. Rate limit: 30 scans/min per IP.
+      </p>
+      <pre id="curlSnippet" class="api-box mono">curl -s https://scan.kradl.xyz/api/scan/8453/0x2FEE1b921F68A19bFdA0B587dff8bC245727D518</pre>
+    </section>
+
+    <footer>
+      <span>Vigil · Open-source on-chain security utility</span>
+      <span>Built for Base (8453) &amp; Robinhood Chain (4663) · <a href="https://kradl.xyz" target="_blank" rel="noreferrer">kradl.xyz</a></span>
+    </footer>
+  </div>
+
+  <script>
+    const form = document.getElementById("scanForm");
+    const chainSelect = document.getElementById("chainSelect");
+    const addrInput = document.getElementById("addrInput");
+    const scanBtn = document.getElementById("scanBtn");
+    const errorBox = document.getElementById("errorBox");
+    const resultCard = document.getElementById("resultCard");
+    const curlSnippet = document.getElementById("curlSnippet");
+    let lastShareUrl = "";
+
+    async function runScan(chainId, address) {
+      errorBox.classList.add("hidden");
+      scanBtn.disabled = true;
+      scanBtn.textContent = "Scanning...";
+      try {
+        const res = await fetch(`/api/scan/${chainId}/${address.trim()}`);
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || "Scan failed");
+        renderReport(data);
+        const shareUrl = `${location.origin}/?chain=${data.chainId}&address=${data.address}`;
+        lastShareUrl = shareUrl;
+        history.replaceState(null, "", `/?chain=${data.chainId}&address=${data.address}`);
+        curlSnippet.textContent = `curl -s ${location.origin}/api/scan/${data.chainId}/${data.address}`;
+      } catch (e) {
+        resultCard.classList.add("hidden");
+        errorBox.textContent = e.message || "Unexpected error";
+        errorBox.classList.remove("hidden");
+      } finally {
+        scanBtn.disabled = false;
+        scanBtn.textContent = "Scan Now";
+      }
+    }
+
+    function renderReport(d) {
+      resultCard.classList.remove("hidden");
+      const badge = document.getElementById("resBadge");
+      badge.textContent = d.riskLevel;
+      badge.className = "badge mono " + (d.riskLevel === "LOW RISK" ? "low" : d.riskLevel === "MEDIUM RISK" ? "med" : "high");
+
+      document.getElementById("resTitle").textContent = d.token.isErc20
+        ? `${d.token.name || "Token"} ($${d.token.symbol})`
+        : d.sourcify.contractName || (d.isContract ? "Smart Contract" : "EOA Wallet");
+      document.getElementById("resAddr").textContent = `${d.chainName} · ${d.address}`;
+      document.getElementById("resScore").textContent = `${d.score}/100`;
+      document.getElementById("resExplorer").href = d.explorerUrl;
+
+      const metaItems = [
+        ["Type", d.isContract ? `Contract (${d.bytecodeSizeBytes.toLocaleString()} bytes)` : "EOA Wallet"],
+        ["ETH Balance", `${Number(d.ethBalance).toFixed(5)} ETH`],
+        ["Sourcify", d.sourcify.verified ? `Verified (${d.sourcify.matchType})` : "Unverified"],
+        ["Supply", d.token.totalSupplyFormatted ? Number(d.token.totalSupplyFormatted).toLocaleString("en-US") : "—"],
+      ];
+      document.getElementById("metaGrid").innerHTML = metaItems
+        .map(([k, v]) => `<div><div class="meta-label mono">${k}</div><div class="meta-val mono">${v}</div></div>`)
+        .join("");
+
+      document.getElementById("checksList").innerHTML = d.checks
+        .map(c => `<div class="check-row"><span class="dot ${c.status}"></span><div><div class="check-title">${c.label}</div><div class="check-detail mono">${c.detail}</div></div></div>`)
+        .join("");
+    }
+
+    form.addEventListener("submit", (e) => {
+      e.preventDefault();
+      runScan(chainSelect.value, addrInput.value);
+    });
+
+    document.querySelectorAll(".sample-btn[data-addr]").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        chainSelect.value = btn.dataset.chain;
+        addrInput.value = btn.dataset.addr;
+        runScan(btn.dataset.chain, btn.dataset.addr);
+      });
+    });
+
+    document.getElementById("copyShareBtn").addEventListener("click", async () => {
+      if (!lastShareUrl) return;
+      await navigator.clipboard.writeText(lastShareUrl);
+      const b = document.getElementById("copyShareBtn");
+      b.textContent = "Copied!";
+      setTimeout(() => (b.textContent = "Copy Share Link"), 1500);
+    });
+
+    const params = new URLSearchParams(location.search);
+    if (params.get("address")) {
+      const c = params.get("chain") || "8453";
+      chainSelect.value = c;
+      addrInput.value = params.get("address");
+      runScan(c, params.get("address"));
+    }
+  </script>
+</body>
+</html>
